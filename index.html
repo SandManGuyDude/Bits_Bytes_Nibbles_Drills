@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>myInt Drills</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a debugger "watch window" — the 32-bit register is the hero, the challenge card sits under it, one column. */
+:root {
+  --bg: #EDF0EF;
+  --panel: #FFFFFF;
+  --ink: #16201E;
+  --muted: #5A6764;
+  --line: #CBD4D1;
+  --accent: #2C55E0;
+  --good: #1B7F47;
+  --bad: #BE3328;
+  --b0: #0B8A79;
+  --b1: #7347D2;
+  --b2: #B86C06;
+  --b3: #C13658;
+  --mono: "Martian Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1514; --panel: #162020; --ink: #E5EEEB; --muted: #91A29E; --line: #2A3836;
+    --accent: #7D9CFF; --good: #4FCF87; --bad: #FF7467;
+    --b0: #3CCBB5; --b1: #A98CFF; --b2: #F0A53A; --b3: #FF7B98;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1514; --panel: #162020; --ink: #E5EEEB; --muted: #91A29E; --line: #2A3836;
+  --accent: #7D9CFF; --good: #4FCF87; --bad: #FF7467;
+  --b0: #3CCBB5; --b1: #A98CFF; --b2: #F0A53A; --b3: #FF7B98;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+h1 { font-family: var(--mono); font-weight: 700; font-size: clamp(20px, 4.5vw, 26px); margin: 0; letter-spacing: -0.02em; }
+h1 span { color: var(--accent); }
+.sub { color: var(--muted); font-size: 14px; margin: 2px 0 0; }
+.stats { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; gap: 14px; font-variant-numeric: tabular-nums; }
+.stats b { color: var(--ink); font-weight: 600; }
+
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.tabs { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
+.tabs button { border: 0; background: transparent; color: var(--muted); font: 600 14px var(--sans); padding: 7px 14px; border-radius: 7px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--panel); }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); cursor: pointer; user-select: none; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+/* Register */
+.reg { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 14px 14px; }
+.reg-head { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--mono); font-size: 12px; color: var(--muted); margin-bottom: 12px; gap: 8px; flex-wrap: wrap; }
+.reg-head .val { color: var(--ink); font-size: 13px; }
+.bytes { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(6px, 2vw, 14px); }
+.byte { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bname { font-family: var(--mono); font-size: 11px; font-weight: 600; text-align: center; padding-bottom: 4px; border-bottom: 2px solid currentColor; }
+.digits { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.cell { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.d { width: 100%; text-align: center; font-family: var(--mono); font-weight: 700; font-size: clamp(22px, 7vw, 44px); line-height: 1.25; border-radius: 8px; border: 2px solid transparent; font-variant-numeric: tabular-nums; }
+.cell.ring .d { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.cell.wrong .d { border-color: var(--bad); border-style: dashed; }
+.cell.changed .d { border-color: var(--good); }
+.nlab { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.bits { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; text-align: center; font-family: var(--mono); }
+.bits .bn { font-size: 8px; color: var(--muted); }
+.bits .bv { font-size: 11px; font-weight: 600; }
+.bits .bv.one { color: var(--ink); }
+.bits .bv.zero { color: color-mix(in srgb, var(--muted) 60%, transparent); }
+.nomap .nlab, .nomap .bits, .nomap .bname { visibility: hidden; }
+.nomap .bname { visibility: visible; color: var(--line) !important; font-size: 0; }
+.k0 { color: var(--b0); } .k1 { color: var(--b1); } .k2 { color: var(--b2); } .k3 { color: var(--b3); }
+.k0 .d { background: color-mix(in srgb, var(--b0) 13%, var(--panel)); color: var(--ink); }
+.k1 .d { background: color-mix(in srgb, var(--b1) 13%, var(--panel)); color: var(--ink); }
+.k2 .d { background: color-mix(in srgb, var(--b2) 13%, var(--panel)); color: var(--ink); }
+.k3 .d { background: color-mix(in srgb, var(--b3) 13%, var(--panel)); color: var(--ink); }
+.nomap .k0 .d, .nomap .k1 .d, .nomap .k2 .d, .nomap .k3 .d { background: color-mix(in srgb, var(--muted) 10%, var(--panel)); }
+
+/* Challenge card */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.q { font-size: clamp(18px, 4vw, 22px); font-weight: 600; margin: 0; text-wrap: balance; }
+.q code, .code, .fb code { font-family: var(--mono); font-size: 0.82em; background: color-mix(in srgb, var(--accent) 9%, var(--panel)); padding: 1px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+.chip { display: inline-block; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 99px; border: 1px solid var(--accent); color: var(--accent); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--muted); font-size: 14px; }
+textarea, input[type="text"] { width: 100%; font: 14px/1.6 var(--mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; resize: vertical; }
+textarea:focus, input:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn { font: 600 15px var(--sans); border-radius: 10px; padding: 10px 18px; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.btn:hover { filter: brightness(1.05); }
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 520px) { .opts { grid-template-columns: 1fr; } }
+.opt { text-align: left; font: 13px var(--mono); padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; overflow-wrap: anywhere; }
+.opt.right { border-color: var(--good); background: color-mix(in srgb, var(--good) 12%, var(--panel)); }
+.opt.picked-wrong { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, var(--panel)); }
+.opt:disabled { cursor: default; }
+.fb { border-radius: 10px; padding: 12px 14px; font-size: 15px; display: flex; flex-direction: column; gap: 6px; }
+.fb.ok { background: color-mix(in srgb, var(--good) 12%, var(--panel)); border: 1px solid color-mix(in srgb, var(--good) 45%, transparent); }
+.fb.no { background: color-mix(in srgb, var(--bad) 10%, var(--panel)); border: 1px solid color-mix(in srgb, var(--bad) 40%, transparent); }
+.fb.info { background: var(--bg); border: 1px solid var(--line); }
+.fb strong { font-weight: 700; }
+.fb pre { margin: 0; font: 13px/1.7 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.small { font-size: 13px; color: var(--muted); }
+
+details { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; }
+summary { cursor: pointer; font-weight: 600; }
+.ref { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 14px; margin-top: 12px; font: 13px var(--mono); font-variant-numeric: tabular-nums; }
+@media (max-width: 480px) { .ref { grid-template-columns: repeat(2, 1fr); } }
+.ref span b { color: var(--accent); margin-right: 8px; }
+.rules { margin: 12px 0 0; padding-left: 18px; font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+@media (prefers-reduced-motion: no-preference) { .cell.ring .d { transition: box-shadow .2s; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>my<span>Int</span> Drills</h1>
+      <p class="sub">Practice editing <code class="code">x.value</code> through bytes, nibbles and bits.</p>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="bar">
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-edit" data-mode="edit">Edit it</button>
+      <button role="tab" id="tab-trace" data-mode="trace">Trace it</button>
+      <button role="tab" id="tab-locate" data-mode="locate">Locate it</button>
+    </div>
+    <label class="toggle"><input type="checkbox" id="mapToggle" checked> Show memory map</label>
+  </div>
+
+  <section class="reg" id="reg"></section>
+  <section class="card" id="card"></section>
+
+  <details>
+    <summary>Cheat sheet</summary>
+    <ul class="rules">
+      <li><b>byte0 is the RIGHTMOST</b> pair of hex digits, byte3 is the leftmost (little-endian).</li>
+      <li>In each byte, <b>nibble0 is the right digit</b>, nibble1 is the left digit.</li>
+      <li>bit0–bit3 are in the right digit (worth 1, 2, 4, 8). bit4–bit7 are in the left digit (worth 1, 2, 4, 8 of that digit).</li>
+      <li>Fields keep only what fits: a nibble keeps 4 bits, a bit keeps 1.</li>
+    </ul>
+    <div class="ref" id="ref"></div>
+  </details>
+</div>
+
+<script>
+(function () {
+  const HEX = "0123456789ABCDEF";
+  const hex8 = v => (v >>> 0).toString(16).toUpperCase().padStart(8, "0");
+  const hex2 = v => (v & 0xFF).toString(16).toUpperCase().padStart(2, "0");
+  const bin4 = d => d.toString(2).padStart(4, "0");
+  const rnd = n => Math.floor(Math.random() * n);
+  const rand32 = () => (Math.floor(Math.random() * 0x100000000)) >>> 0;
+  const article = c => ("AEF8".includes(c) ? "an" : "a");
+  const digitAt = (v, i) => (v >>> ((7 - i) * 4)) & 0xF;           // i = 0 is leftmost
+  const posOf = i => ({ k: Math.floor((7 - i) / 2), j: (7 - i) % 2 }); // byte k, nibble j
+  const idxOf = (k, j) => 7 - (k * 2 + j);
+  const setDigit = (v, i, d) => { const s = (7 - i) * 4; return ((v & ~(0xF << s)) | (d << s)) >>> 0; };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  // ---------- storage ----------
+  let stats = { right: 0, tries: 0, streak: 0, best: 0 };
+  try { const s = JSON.parse(localStorage.getItem("myint-stats") || "null"); if (s) stats = Object.assign(stats, s); } catch (e) {}
+  let showMap = true;
+  try { const m = localStorage.getItem("myint-map"); if (m !== null) showMap = m === "1"; } catch (e) {}
+  const save = () => { try { localStorage.setItem("myint-stats", JSON.stringify(stats)); localStorage.setItem("myint-map", showMap ? "1" : "0"); } catch (e) {} };
+
+  function record(ok) {
+    stats.tries++;
+    if (ok) { stats.right++; stats.streak++; stats.best = Math.max(stats.best, stats.streak); }
+    else stats.streak = 0;
+    save(); renderStats();
+  }
+  function renderStats() {
+    document.getElementById("stats").innerHTML =
+      `<span>Streak <b>${stats.streak}</b></span><span>Best <b>${stats.best}</b></span><span>Correct <b>${stats.right}/${stats.tries}</b></span>`;
+  }
+
+  // ---------- statements ----------
+  function parseNum(t) {
+    t = t.toLowerCase();
+    if (t.startsWith("0x")) return parseInt(t.slice(2), 16);
+    if (t.startsWith("0b")) return parseInt(t.slice(2), 2);
+    return parseInt(t, 10);
+  }
+  function parseLine(raw) {
+    const s = raw.replace(/\s+/g, "").replace(/;+$/, "");
+    if (!s) return null;
+    const m = s.match(/^(?:x\.)?(.+?)=(0x[0-9a-f]+|0b[01]+|\d+)$/i);
+    if (!m) return { err: `I couldn't read <code>${esc(raw.trim())}</code>. Write it like <code>x.bytes.byte2.nibbles.nibble0 = 0xA;</code>` };
+    const path = m[1].toLowerCase(), n = parseNum(m[2]);
+    if (path === "value") return { kind: "value", n };
+    const p = path.match(/^bytes\.byte([0-3])\.(value|nibbles\.nibble([01])|bits\.bit([0-7]))$/);
+    if (p) {
+      const k = +p[1];
+      if (p[2] === "value") return { kind: "byte", k, n };
+      if (p[3] !== undefined) return { kind: "nibble", k, j: +p[3], n };
+      return { kind: "bit", k, b: +p[4], n };
+    }
+    let why = "Check the path. The full forms are <code>x.bytes.byteN.value</code>, <code>x.bytes.byteN.nibbles.nibbleK</code> and <code>x.bytes.byteN.bits.bitK</code>.";
+    if (/^byte\d/.test(path)) why = "You're missing <code>.bytes</code>. The path starts <code>x.bytes.byteN</code>.";
+    else if (/byte[4-9]/.test(path)) why = "There are only four bytes: byte0 to byte3.";
+    else if (/nibble[2-9]/.test(path)) why = "Each byte has only nibble0 and nibble1.";
+    else if (/bit([89]|\d\d)/.test(path)) why = "Bits are numbered bit0 to bit7 inside each byte.";
+    else if (/\.nibble\d/.test(path) && !/nibbles\./.test(path)) why = "Nibbles go through <code>.nibbles</code>: <code>x.bytes.byteN.nibbles.nibbleK</code>.";
+    else if (/\.bit\d/.test(path) && !/bits\./.test(path)) why = "Bits go through <code>.bits</code>: <code>x.bytes.byteN.bits.bitK</code>.";
+    return { err: `<code>${esc(raw.trim())}</code>: ${why}` };
+  }
+  function field(st) {
+    if (st.kind === "value") return { shift: 0, width: 32 };
+    if (st.kind === "byte") return { shift: st.k * 8, width: 8 };
+    if (st.kind === "nibble") return { shift: st.k * 8 + st.j * 4, width: 4 };
+    return { shift: st.k * 8 + st.b, width: 1 };
+  }
+  function apply(v, st) {
+    if (st.kind === "value") return st.n >>> 0;
+    const { shift, width } = field(st);
+    const mask = (1 << width) - 1;
+    return ((v & ~(mask << shift)) | ((st.n & mask) << shift)) >>> 0;
+  }
+  function stmtText(st) {
+    if (st.kind === "byte") return `x.bytes.byte${st.k}.value = 0x${hex2(st.n)};`;
+    if (st.kind === "nibble") return `x.bytes.byte${st.k}.nibbles.nibble${st.j} = 0x${HEX[st.n & 0xF]};`;
+    if (st.kind === "bit") return `x.bytes.byte${st.k}.bits.bit${st.b} = ${st.n & 1};`;
+    return `x.value = 0x${hex8(st.n)};`;
+  }
+  const truncNote = st => {
+    if (st.kind === "value") return "";
+    const { width } = field(st);
+    if (st.n >= (1 << width)) {
+      const kept = st.n & ((1 << width) - 1);
+      return `Note: ${st.n} doesn't fit in ${width} bit${width > 1 ? "s" : ""}, so C keeps only the low part (${width === 1 ? kept : "0x" + kept.toString(16).toUpperCase()}).`;
+    }
+    return "";
+  };
+
+  // ---------- register view ----------
+  function renderReg(v, opts = {}) {
+    const ring = opts.ring ?? -1, marks = opts.marks || {};
+    let html = `<div class="reg-head"><span>${esc(opts.label || "x.value")}</span><span class="val">0x${hex8(v)}</span></div><div class="bytes${showMap ? "" : " nomap"}">`;
+    for (let k = 3; k >= 0; k--) {
+      html += `<div class="byte k${k}"><div class="bname">byte${k}</div><div class="digits">`;
+      for (let j = 1; j >= 0; j--) {
+        const i = idxOf(k, j), d = digitAt(v, i);
+        const cls = ["cell", i === ring ? "ring" : "", marks[i] || ""].join(" ");
+        const bits = bin4(d).split("");
+        let bh = "";
+        for (let p = 3; p >= 0; p--) bh += `<span class="bn">${j * 4 + p}</span>`;
+        bits.forEach(b => bh += `<span class="bv ${b === "1" ? "one" : "zero"}">${b}</span>`);
+        html += `<div class="${cls}"><div class="d">${HEX[d]}</div><div class="nlab">nibble${j}</div><div class="bits">${bh}</div></div>`;
+      }
+      html += `</div></div>`;
+    }
+    return html + `</div>`;
+  }
+
+  // ---------- game state ----------
+  let mode = "edit", ch = null;
+  const reg = document.getElementById("reg"), card = document.getElementById("card");
+
+  function newChallenge() {
+    if (mode === "edit") ch = genEdit();
+    else if (mode === "trace") ch = genTrace();
+    else ch = genLocate();
+    draw();
+  }
+
+  // ===== EDIT =====
+  const CONSTRAINTS = ["any", "nibble", "nibble", "byte", "bits", "bits"];
+  function genEdit() {
+    const v = rand32(), i = rnd(8), old = digitAt(v, i);
+    const constraint = CONSTRAINTS[rnd(CONSTRAINTS.length)];
+    let nd;
+    if (constraint === "bits" && Math.random() < 0.65) nd = old ^ (1 << rnd(4));
+    else do { nd = rnd(16); } while (nd === old);
+    return { type: "edit", v, i, old, nd, target: setDigit(v, i, nd), constraint, solved: false, shown: false, input: "", result: null, fb: null };
+  }
+  const cLabel = { any: "any field except x.value", nibble: "nibbles only", byte: "byte .value only", bits: "bits only" };
+  function editAnswers(c) {
+    const { k, j } = posOf(c.i), out = [];
+    out.push({ tag: "nibble", code: stmtText({ kind: "nibble", k, j, n: c.nd }) });
+    out.push({ tag: "byte", code: stmtText({ kind: "byte", k, n: (c.target >>> (8 * k)) & 0xFF }) });
+    const lines = [];
+    for (let p = 0; p < 4; p++) if (((c.old ^ c.nd) >> p) & 1) lines.push(stmtText({ kind: "bit", k, b: j * 4 + p, n: (c.nd >> p) & 1 }));
+    out.push({ tag: "bits", code: lines.join("\n") });
+    return out;
+  }
+  function checkEdit() {
+    const c = ch, text = document.getElementById("code").value;
+    c.input = text;
+    const stmts = [], errs = [];
+    text.split(/[;\n]/).forEach(l => { const st = parseLine(l); if (!st) return; if (st.err) errs.push(st.err); else stmts.push(st); });
+    if (errs.length) { c.fb = { cls: "no", html: errs.map(e => `<div>${e}</div>`).join("") }; c.result = null; return draw(); }
+    if (!stmts.length) { c.fb = { cls: "info", html: "Type at least one line of code first." }; return draw(); }
+    if (stmts.some(s => s.kind === "value")) { c.fb = { cls: "no", html: "Use bytes, nibbles or bits here, not <code>x.value</code>." }; return draw(); }
+    const want = { nibble: "nibble", byte: "byte", bits: "bit" }[c.constraint];
+    if (want && stmts.some(s => s.kind !== want)) { c.fb = { cls: "no", html: `This round says <strong>${cLabel[c.constraint]}</strong>. Rewrite it using only that kind of field.` }; return draw(); }
+    let r = c.v; stmts.forEach(s => r = apply(r, s));
+    c.result = r;
+    const notes = stmts.map(truncNote).filter(Boolean);
+    if (r === c.target) {
+      if (!c.solved && !c.shown) record(true);
+      c.solved = true;
+      c.fb = { cls: "ok", html: `<strong>Correct.</strong> x.value is now 0x${hex8(r)}.${notes.length ? `<div class="small">${notes.join(" ")}</div>` : ""}` };
+    } else {
+      if (!c.shown) record(false);
+      const { k, j } = posOf(c.i);
+      const hints = [];
+      stmts.forEach(s => {
+        if (s.kind !== "value" && s.k !== k && s.k === 3 - k) hints.push(`You wrote byte${s.k}, but the highlighted digit is in <strong>byte${k}</strong>. Count bytes from the <strong>right</strong>: byte0 is the last two digits.`);
+        else if (s.kind === "nibble" && s.k === k && s.j !== j) hints.push(`Right byte, wrong nibble. The highlighted digit is the ${j ? "left" : "right"} digit of byte${k}, so it's <strong>nibble${j}</strong>.`);
+        else if (s.kind === "bit" && s.k === k && Math.floor(s.b / 4) !== j) hints.push(`bit${s.b} is in the ${s.b >= 4 ? "left" : "right"} digit of byte${k}. The highlighted digit uses bits ${j ? "4–7" : "0–3"}.`);
+        else if (s.kind !== "value" && s.k !== k) hints.push(`byte${s.k} isn't where the highlighted digit lives. It's in <strong>byte${k}</strong>.`);
+      });
+      if (!hints.length) {
+        const got = digitAt(r, c.i);
+        hints.push(`The highlighted digit came out as <strong>${HEX[got]}</strong> (${bin4(got)}), but it should be <strong>${HEX[c.nd]}</strong> (${bin4(c.nd)}).`);
+        const otherChanged = [...Array(8).keys()].some(x => x !== c.i && digitAt(r, x) !== digitAt(c.target, x));
+        if (otherChanged) hints.push("Another digit changed too. Make sure you keep the other digit in the byte the same.");
+      }
+      c.fb = { cls: "no", html: `<strong>Not yet.</strong> You got 0x${hex8(r)}, the goal is 0x${hex8(c.target)}.${[...new Set(hints)].map(h => `<div>${h}</div>`).join("")}${notes.length ? `<div class="small">${notes.join(" ")}</div>` : ""}` };
+    }
+    draw();
+  }
+  function showEditAnswer() {
+    const c = ch;
+    if (!c.solved && !c.shown) record(false);
+    c.shown = true; c.solved = true;
+    const { k, j } = posOf(c.i);
+    const ans = editAnswers(c);
+    const order = c.constraint === "any" ? ans : [...ans.filter(a => a.tag === ({ nibble: "nibble", byte: "byte", bits: "bits" }[c.constraint])), ...ans.filter(a => a.tag !== ({ nibble: "nibble", byte: "byte", bits: "bits" }[c.constraint]))];
+    c.fb = { cls: "info", html: `The ${HEX[c.old]} is the ${j ? "left" : "right"} digit of <strong>byte${k}</strong>, so it's <strong>nibble${j}</strong>. ${HEX[c.old]} = ${bin4(c.old)}, ${HEX[c.nd]} = ${bin4(c.nd)}.` +
+      order.map(a => `<div class="small">${a.tag === "bits" ? "Using bits" : a.tag === "byte" ? "Using the byte (keep the other digit)" : "Using the nibble"}</div><pre>${esc(a.code)}</pre>`).join("") };
+    draw();
+  }
+
+  // ===== TRACE =====
+  function genTrace() {
+    const v = rand32(), k = rnd(4), r = Math.random();
+    let st;
+    if (r < 0.25) st = { kind: "byte", k, n: rnd(256) };
+    else if (r < 0.6) st = { kind: "nibble", k, j: rnd(2), n: rnd(16) };
+    else {
+      const b = rnd(8), cur = (v >>> (k * 8 + b)) & 1;
+      st = { kind: "bit", k, b, n: Math.random() < 0.85 ? 1 - cur : cur };
+    }
+    return { type: "trace", v, st, result: apply(v, st), solved: false, fb: null, answered: false };
+  }
+  function traceExplain(c) {
+    const { v, st, result } = c, lines = [];
+    const changed = [...Array(8).keys()].filter(i => digitAt(v, i) !== digitAt(result, i));
+    if (st.kind === "byte") lines.push(`byte${st.k} is the pair of digits ${st.k === 0 ? "on the far right" : st.k === 3 ? "on the far left" : `#${4 - st.k} from the left`}. Both of its digits become ${hex2(st.n)}.`);
+    if (st.kind === "nibble") lines.push(`nibble${st.j} of byte${st.k} is the ${st.j ? "left" : "right"} digit of that byte. It becomes ${HEX[st.n]}.`);
+    if (st.kind === "bit") {
+      const j = st.b >= 4 ? 1 : 0, p = st.b % 4, i = idxOf(st.k, j), od = digitAt(v, i), nd = digitAt(result, i);
+      lines.push(`bit${st.b} of byte${st.k} is in the ${j ? "left" : "right"} digit of that byte and is worth ${1 << p} in that digit.`);
+      lines.push(od === nd ? `That bit was already ${st.n}, so nothing changes. ${HEX[od]} = ${bin4(od)}.` : `${HEX[od]} = ${bin4(od)} → ${bin4(nd)} = ${HEX[nd]}.`);
+    }
+    if (!changed.length && st.kind !== "bit") lines.push("The new value matched the old one, so nothing changed.");
+    return lines;
+  }
+  function checkTrace() {
+    const c = ch, raw = document.getElementById("ans").value.replace(/\s+/g, "").replace(/^0x/i, "").toUpperCase();
+    c.input = document.getElementById("ans").value;
+    if (!/^[0-9A-F]{1,8}$/.test(raw)) { c.fb = { cls: "info", html: "Type x.value as up to 8 hex digits, like <code>D1221304</code>." }; return draw(); }
+    const g = parseInt(raw, 16) >>> 0, ok = g === c.result;
+    if (!c.answered) record(ok);
+    c.answered = true;
+    if (ok) { c.solved = true; c.fb = { cls: "ok", html: `<strong>Correct.</strong> 0x${hex8(c.result)}${traceExplain(c).map(l => `<div class="small">${l}</div>`).join("")}` }; }
+    else c.fb = { cls: "no", html: `<strong>Not quite.</strong> You said 0x${hex8(g)}. Try again, or reveal the answer.` };
+    draw();
+  }
+  function showTrace() {
+    const c = ch; if (!c.answered) record(false);
+    c.answered = true; c.solved = true;
+    c.fb = { cls: "info", html: `Answer: <strong>0x${hex8(c.result)}</strong>${traceExplain(c).map(l => `<div>${l}</div>`).join("")}` };
+    draw();
+  }
+
+  // ===== LOCATE =====
+  function genLocate() {
+    const v = rand32(), i = rnd(8), { k, j } = posOf(i);
+    let opts, correct, q;
+    if (Math.random() < 0.5) {
+      q = `Which line changes the highlighted <strong>${HEX[digitAt(v, i)]}</strong>?`;
+      const mk = (kk, jj) => `x.bytes.byte${kk}.nibbles.nibble${jj}`;
+      correct = mk(k, j);
+      opts = [correct, mk(3 - k, j), mk(k, 1 - j), mk(3 - k, 1 - j)];
+      if (k === 3 - k) {} // never equal for 0..3
+    } else {
+      const p = rnd(4), w = 1 << p;
+      q = `Which bit is the <strong>${w}s place</strong> of the highlighted ${HEX[digitAt(v, i)]}?`;
+      const mk = (kk, bb) => `x.bytes.byte${kk}.bits.bit${bb}`;
+      correct = mk(k, j * 4 + p);
+      opts = [correct, mk(3 - k, j * 4 + p), mk(k, (1 - j) * 4 + p), mk(k, j * 4 + (3 - p))];
+      let guard = 0;
+      while (new Set(opts).size < 4 && guard++ < 50) { opts = [...new Set(opts)]; opts.push(mk(rnd(4), rnd(8))); }
+    }
+    opts = [...new Set(opts)].slice(0, 4).sort(() => Math.random() - 0.5);
+    return { type: "locate", v, i, q, opts, correct, picked: null, fb: null, solved: false };
+  }
+  function pickLocate(o) {
+    const c = ch; if (c.solved) return;
+    c.picked = o; c.solved = true;
+    const ok = o === c.correct; record(ok);
+    const { k, j } = posOf(c.i);
+    c.fb = { cls: ok ? "ok" : "no", html: `<strong>${ok ? "Correct." : "Not this one."}</strong> The highlighted digit is #${c.i + 1} from the left. That puts it in <strong>byte${k}</strong> (byte0 is the rightmost pair) as the ${j ? "left" : "right"} digit, so <strong>nibble${j}</strong>${c.correct.includes("bit") ? `, which holds bits ${j ? "4–7" : "0–3"} of that byte` : ""}.` };
+    draw();
+  }
+
+  // ---------- draw ----------
+  function draw() {
+    document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.mode === mode));
+    const c = ch;
+    if (c.type === "edit") {
+      const marks = {};
+      if (c.result != null && c.result !== c.target) for (let x = 0; x < 8; x++) if (digitAt(c.result, x) !== digitAt(c.target, x)) marks[x] = "wrong";
+      reg.innerHTML = renderReg(c.v, { ring: c.i, label: "x.value (before)" }) +
+        (c.result != null ? `<div style="height:14px"></div>` + renderReg(c.result, { ring: c.i, marks, label: c.result === c.target ? "after your code ✓" : "after your code" }) : "");
+      card.innerHTML = `
+        <p class="q">Change the highlighted ${HEX[c.old]} to ${article(HEX[c.nd])} ${HEX[c.nd]}.</p>
+        <div class="meta"><span class="chip">${cLabel[c.constraint]}</span><span>Goal: 0x${hex8(c.target)}</span></div>
+        <label class="small" for="code">Your C code (one or more lines)</label>
+        <textarea id="code" rows="3" spellcheck="false" autocomplete="off" placeholder="x.bytes.byte3.nibbles.nibble1 = 0xF;">${esc(c.input || "")}</textarea>
+        <div class="row">
+          ${c.solved ? `<button class="btn primary" id="next">Next challenge</button>` : `<button class="btn primary" id="check">Run code</button><button class="btn" id="reveal">Show answer</button>`}
+        </div>
+        ${c.fb ? `<div class="fb ${c.fb.cls}">${c.fb.html}</div>` : `<p class="small">Enter runs your code. Shift+Enter adds a new line.</p>`}`;
+      const ta = document.getElementById("code");
+      ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); c.solved ? newChallenge() : checkEdit(); } });
+      if (!c.solved) ta.focus();
+      bind("check", checkEdit); bind("reveal", showEditAnswer);
+    } else if (c.type === "trace") {
+      const marks = {};
+      if (c.solved) for (let x = 0; x < 8; x++) if (digitAt(c.v, x) !== digitAt(c.result, x)) marks[x] = "changed";
+      reg.innerHTML = renderReg(c.v, { label: "x.value (before)" }) + (c.solved ? `<div style="height:14px"></div>` + renderReg(c.result, { marks, label: "after" }) : "");
+      card.innerHTML = `
+        <p class="q">x.value is 0x${hex8(c.v)}. This line runs:</p>
+        <pre class="fb info" style="font:14px var(--mono);margin:0;overflow-x:auto">${esc(stmtText(c.st))}</pre>
+        <label class="small" for="ans">What is x.value now? (8 hex digits)</label>
+        <input type="text" id="ans" autocomplete="off" spellcheck="false" placeholder="0x________" value="${esc(c.input || "")}">
+        <div class="row">
+          ${c.solved ? `<button class="btn primary" id="next">Next challenge</button>` : `<button class="btn primary" id="check">Check</button><button class="btn" id="reveal">Show answer</button>`}
+        </div>
+        ${c.fb ? `<div class="fb ${c.fb.cls}">${c.fb.html}</div>` : ""}`;
+      const inp = document.getElementById("ans");
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); c.solved ? newChallenge() : checkTrace(); } });
+      if (!c.solved) inp.focus();
+      bind("check", checkTrace); bind("reveal", showTrace);
+    } else {
+      reg.innerHTML = renderReg(c.v, { ring: c.i });
+      card.innerHTML = `
+        <p class="q">${c.q}</p>
+        <div class="opts">${c.opts.map((o, n) => `<button class="opt ${c.solved && o === c.correct ? "right" : ""} ${c.picked === o && o !== c.correct ? "picked-wrong" : ""}" data-o="${n}" ${c.solved ? "disabled" : ""}>${esc(o)}</button>`).join("")}</div>
+        ${c.solved ? `<div class="row"><button class="btn primary" id="next">Next challenge</button></div>` : `<p class="small">Tip: turn off the memory map to practice like it's the real thing.</p>`}
+        ${c.fb ? `<div class="fb ${c.fb.cls}">${c.fb.html}</div>` : ""}`;
+      card.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => pickLocate(c.opts[+b.dataset.o])));
+    }
+    bind("next", newChallenge);
+    const nx = document.getElementById("next"); if (nx && c.type !== "edit" && c.type !== "trace") nx.focus();
+  }
+  function bind(id, fn) { const el = document.getElementById(id); if (el) el.addEventListener("click", fn); }
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Enter" && ch && ch.type === "locate" && ch.solved && document.activeElement?.id !== "next") { e.preventDefault(); newChallenge(); }
+  });
+  document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => { mode = b.dataset.mode; newChallenge(); }));
+  const mt = document.getElementById("mapToggle");
+  mt.checked = showMap;
+  mt.addEventListener("change", () => { showMap = mt.checked; save(); draw(); });
+
+  document.getElementById("ref").innerHTML = [...Array(16).keys()].map(d => `<span><b>${HEX[d]}</b>${bin4(d)}</span>`).join("");
+
+  renderStats();
+  newChallenge();
+})();
+</script>
+
+</body>
+</html>
